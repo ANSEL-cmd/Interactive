@@ -14,4 +14,3 @@ If the user submits empty pet name or empty vaccine name, the program shows a wa
 3. Run with uv:
 ```bash
 uv run streamlit run app.py
-![Preview of the app](preview.png)
