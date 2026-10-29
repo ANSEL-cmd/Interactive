@@ -49,6 +49,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 git clone https://github.com/ANSEL-cmd/Interactive.git
 cd Interactive
 uv run streamlit run app.py
+'''
 
 ## Credits
 
