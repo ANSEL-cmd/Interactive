@@ -49,3 +49,10 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 git clone https://github.com/ANSEL-cmd/Interactive.git
 cd Interactive
 uv run streamlit run app.py
+
+## Credits
+
+- Built from scratch for Assignment 3
+- Pixel pet avatars are original ASCII art created for this project
+- Developed using Streamlit and Matplotlib
+- No third-party code, media or assets were copied
