@@ -1,6 +1,6 @@
 # Pet Vaccine Record Log
 
-A lightweight interactive tool for pet owners to log and keep track of their pets' vaccination history.
+A lightweight interactive web tool designed for pet owners to securely log, organise and keep track of their pets’ full vaccination history. It helps users maintain clear records of vaccine details and deadlines
 
 ![Pet Vaccine Record Log screenshot](preview.png)
 
@@ -14,7 +14,7 @@ Pet owners looking for a straightforward tool to log vaccination dates and quick
 
 ## Design concept
 
-This design prioritises simple, memo-like visual cards for easy scanning. I chose a casual notepad style so vaccination records feel approachable instead of clinical. The colour status system lets users instantly spot vaccines that need attention.
+This design prioritises clean memo-style visual cards for quick scanning. I adopted a casual notepad aesthetic to make vaccination records approachable and easy to understand. The colour-coded status system allows users to instantly spot vaccine entries that require attention.
 
 ## Main interaction
 
