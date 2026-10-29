@@ -29,3 +29,14 @@ I used Doubao and DeepSeek at different points while building this project.
 - Modified: Early versions had no way to delete individual vaccine entries, which felt awkward to use. I added this feature.
 - Modified: Once delete controls were in place, there was a risk of accidentally clearing everything, so I added confirmation prompts.
 - Rejected: Its suggestion to use a SQLite database, which would have added unnecessary complexity.
+
+## 5. Development history and credits
+
+The commit history of this repository shows how the project evolved: starting from a basic input form, adding support for multiple vaccine entries, introducing colour-coded memo cards, then implementing fixes for future date handling, PNG export and single-record deletion.
+
+Credits:
+
+- Built from scratch for Assignment 3.
+- Pixel pet avatars are original ASCII art made for this project.
+- Developed with Streamlit and Matplotlib.
+- No third-party code, assets or media were copied.
