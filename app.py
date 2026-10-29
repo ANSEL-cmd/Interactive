@@ -17,7 +17,6 @@ st.markdown(
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 
-    /* 全局底色：奶油米便签纸底色 */
     .stApp {
         background-color: #F8F6ED;
         background-attachment: fixed;
@@ -40,7 +39,6 @@ st.markdown(
         font-weight: 500;
     }
 
-    /* ===== 核心：宠物独立便签卡片 ===== */
     .memo-card {
         background-color: #FCFBF7;
         border: 1.2px solid #C8D9DC;
@@ -49,7 +47,6 @@ st.markdown(
         margin: 14px 0;
     }
 
-    /* 输入框、选择框、日期框 */
     .stTextInput > div > div > input,
     .stSelectbox > div > div,
     .stDateInput > div > div {
@@ -59,7 +56,6 @@ st.markdown(
         color: #648890;
     }
 
-    /* 按钮配色：浅豆绿 */
     .stButton > button {
         background-color: #D2E0CC;
         border: 1px solid #B9CBB0;
@@ -104,7 +100,6 @@ st.markdown(
         color: #648890;
     }
 
-    /* 下载按钮：浅灰蓝 */
     .stDownloadButton > button {
         background-color: #D6E1E8;
         border: 1px solid #B8C8D0;
@@ -116,7 +111,6 @@ st.markdown(
         background-color: #C9D7DF;
     }
 
-    /* 疫苗状态标签 */
     .tag-valid {
         display: inline-block;
         padding: 2px 8px;
@@ -131,6 +125,14 @@ st.markdown(
         border-radius: 8px;
         background: #F2E9D8;
         color: #7A684E;
+        font-size: 0.85em;
+    }
+    .tag-scheduled {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 8px;
+        background: #D6E1E8;
+        color: #48686E;
         font-size: 0.85em;
     }
     .tag-expired {
@@ -148,7 +150,7 @@ st.markdown(
 
 pixel_avatars = {
     "Cat": r"""
-      /\_/\
+   /\_/\
  =( °w° )=
    )   (
   /     \
@@ -196,10 +198,47 @@ pixel_avatars = {
 """
 }
 
+
+# [NEW] 统一的疫苗状态判断，页面显示和 PNG 导出共用，避免两处逻辑不一致
+def get_status(vac_date):
+    today = date.today()
+    if vac_date > today:
+        return "scheduled"
+    days = (today - vac_date).days
+    if days > 365:
+        return "expired"
+    if days > 330:
+        return "soon"
+    return "valid"
+
+
+def status_tag(status):
+    mapping = {
+        "valid": '<span class="tag-valid">Valid</span>',
+        "soon": '<span class="tag-soon">Coming due soon</span>',
+        "scheduled": '<span class="tag-scheduled">Scheduled</span>',
+        "expired": '<span class="tag-expired">Expired</span>',
+    }
+    return mapping[status]
+
+
+def status_label(status):
+    return {
+        "valid": "Valid",
+        "soon": "Coming due soon",
+        "scheduled": "Scheduled",
+        "expired": "Expired",
+    }[status]
+
+
+# session_state 初始化
 if "pet_data" not in st.session_state:
     st.session_state.pet_data = {}
 if "vaccine_row_count" not in st.session_state:
     st.session_state.vaccine_row_count = 1
+# [NEW] 缓存导出的 PNG bytes，避免用户点下载时按钮消失
+if "png_bytes" not in st.session_state:
+    st.session_state.png_bytes = None
 
 st.title("🐾 Pet Vaccine Record Log")
 st.subheader("Add vaccines for existing pets or register a new pet")
@@ -233,9 +272,23 @@ for i in range(st.session_state.vaccine_row_count):
         vac_date = st.date_input(f"Vaccine {i+1} date", key=f"vac_date_{i}")
     vaccine_inputs.append({"vac_name": vac_name.strip(), "vac_date": vac_date})
 
-if st.button("➕ Add another vaccine row"):
-    st.session_state.vaccine_row_count += 1
-    st.rerun()
+# [NEW] 加行 / 减行并排，减行最低保留 1 行
+col_add, col_remove = st.columns([1, 1])
+with col_add:
+    if st.button("➕ Add another vaccine row"):
+        st.session_state.vaccine_row_count += 1
+        st.rerun()
+with col_remove:
+    if st.button("➖ Remove last row"):
+        if st.session_state.vaccine_row_count > 1:
+            last = st.session_state.vaccine_row_count - 1
+            # 清掉对应 key，避免下次加行时残留旧输入
+            st.session_state.pop(f"vac_name_{last}", None)
+            st.session_state.pop(f"vac_date_{last}", None)
+            st.session_state.vaccine_row_count -= 1
+            st.rerun()
+        else:
+            st.toast("At least one row is required.", icon="ℹ️")
 
 submit_btn = st.button("✅ Save these vaccine records")
 if submit_btn:
@@ -243,24 +296,25 @@ if submit_btn:
         pet_name_clean = pet_name.strip()
         if not pet_name_clean:
             st.warning("⚠️ Please fill in pet name!")
+        elif pet_name_clean in st.session_state.pet_data:
+            st.warning("⚠️ This pet already exists, switch to 'Add vaccine to existing pet'")
         else:
-            if pet_name_clean in st.session_state.pet_data:
-                st.warning("⚠️ This pet already exists, switch to 'Add vaccine to existing pet'")
+            new_vaccines = []
+            for item in vaccine_inputs:
+                if item["vac_name"]:
+                    new_vaccines.append({"vac": item["vac_name"], "date": item["vac_date"]})
+            if new_vaccines:
+                st.session_state.pet_data[pet_name_clean] = {
+                    "avatar": pet_avatar,
+                    "vaccines": new_vaccines
+                }
+                # [FIX] 数据变了，之前缓存的 PNG 作废
+                st.session_state.png_bytes = None
+                st.success(f"🎉 Registered {pet_name_clean} with {len(new_vaccines)} vaccine(s)")
+                st.session_state.vaccine_row_count = 1
+                st.rerun()
             else:
-                new_vaccines = []
-                for item in vaccine_inputs:
-                    if item["vac_name"]:
-                        new_vaccines.append({"vac": item["vac_name"], "date": item["vac_date"]})
-                if new_vaccines:
-                    st.session_state.pet_data[pet_name_clean] = {
-                        "avatar": pet_avatar,
-                        "vaccines": new_vaccines
-                    }
-                    st.success(f"🎉 Registered {pet_name_clean} with {len(new_vaccines)} vaccine(s)")
-                    st.session_state.vaccine_row_count = 1
-                    st.rerun()
-                else:
-                    st.warning("⚠️ No valid vaccine info")
+                st.warning("⚠️ No valid vaccine info")
     else:
         if not pet_list:
             st.warning("⚠️ No existing pet available")
@@ -271,6 +325,7 @@ if submit_btn:
                     add_vacs.append({"vac": item["vac_name"], "date": item["vac_date"]})
             if add_vacs:
                 st.session_state.pet_data[selected_pet_name]["vaccines"].extend(add_vacs)
+                st.session_state.png_bytes = None
                 st.success(f"🎉 Added {len(add_vacs)} vaccine(s) to {selected_pet_name}")
                 st.session_state.vaccine_row_count = 1
                 st.rerun()
@@ -284,37 +339,34 @@ pet_data = st.session_state.pet_data
 if not pet_data:
     st.info("No pets and vaccine records yet.")
 else:
-    # 循环：每一只宠物 = 一张独立便签卡片
     for p_name, info in pet_data.items():
         st.markdown('<div class="memo-card">', unsafe_allow_html=True)
         st.markdown(f"#### {p_name}")
-        st.code(pixel_avatars[info["avatar"]])
-        vac_list = info["vaccines"]
-        for vac in vac_list:
-            days = (date.today() - vac["date"]).days
-            if days > 365:
-                tag = '<span class="tag-expired">Expired</span>'
-            elif days > 330:
-                tag = '<span class="tag-soon">Coming due soon</span>'
-            else:
-                tag = '<span class="tag-valid">Valid</span>'
-            st.markdown(f"- {vac['vac']} | {vac['date']} &nbsp; {tag}", unsafe_allow_html=True)
+        # [FIX] 用 <pre> 而不是 st.code，头像更像便签涂鸦而不是代码块
+        st.markdown(
+            f"<pre style='font-family: monospace; color:#648890; "
+            f"background:transparent; border:none; margin:0 0 8px 0;'>"
+            f"{pixel_avatars[info['avatar']]}</pre>",
+            unsafe_allow_html=True
+        )
+        for vac in info["vaccines"]:
+            status = get_status(vac["date"])
+            tag = status_tag(status)
+            st.markdown(
+                f"- {vac['vac']} | {vac['date']} &nbsp; {tag}",
+                unsafe_allow_html=True
+            )
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # [FIX] 先缓存 PNG bytes，下载按钮独立渲染，点下载不会让按钮消失
     if st.button("📷 Export all records as PNG image"):
-        fig, ax = plt.subplots(figsize=(10, len(pet_data)*2.4))
+        fig, ax = plt.subplots(figsize=(10, len(pet_data) * 2.4))
         ax.axis("off")
         y = len(pet_data) - 0.3
         for p_name, info in pet_data.items():
             text_lines = [f"【{p_name}】"]
             for vac in info["vaccines"]:
-                days = (date.today() - vac["date"]).days
-                if days > 365:
-                    status = "Expired"
-                elif days > 330:
-                    status = "Coming due soon"
-                else:
-                    status = "Valid"
+                status = status_label(get_status(vac["date"]))
                 text_lines.append(f" - {vac['vac']} | {vac['date']} | {status}")
             full_text = "\n".join(text_lines)
             ax.text(0.18, y, full_text, fontsize=11, va="top", color="#527880")
@@ -322,19 +374,25 @@ else:
         buf = BytesIO()
         plt.tight_layout()
         fig.savefig(buf, format="png", dpi=200, bbox_inches="tight", facecolor="#F8F6ED")
-        buf.seek(0)
+        plt.close(fig)
+        st.session_state.png_bytes = buf.getvalue()
+
+    if st.session_state.png_bytes:
         st.download_button(
             label="✅ Download PNG",
-            data=buf,
+            data=st.session_state.png_bytes,
             file_name="pet_vaccine_memo.png",
             mime="image/png"
         )
-        plt.close(fig)
 
-if st.button("🗑️ Clear all pets & records"):
-    st.session_state.pet_data = {}
-    st.session_state.vaccine_row_count = 1
-    st.rerun()
+# [FIX] 清空操作加二次确认，避免手滑
+with st.expander("🗑️ Danger zone"):
+    confirm = st.checkbox("I understand this will delete all pets and records.")
+    if st.button("Clear all pets & records", disabled=not confirm):
+        st.session_state.pet_data = {}
+        st.session_state.vaccine_row_count = 1
+        st.session_state.png_bytes = None
+        st.rerun()
 
 # 底部极简装饰
 st.markdown(

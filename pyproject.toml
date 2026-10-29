@@ -2,5 +2,6 @@
 name = "pet-vaccine-log"
 version = "0.1.0"
 dependencies = [
-  "streamlit>=1.40"
+  "matplotlib>=3.11.2",
+  "streamlit>=1.40",
 ]
