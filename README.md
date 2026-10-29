@@ -1,5 +1,6 @@
 # Pet Vaccine Record Log
 This is a small interactive tool for pet owners to log and track pet vaccination records.
+![Pet Vaccine Record Log screenshot](preview.png)
 ## Intended user
 Pet owners who want a simple local tool to record vaccine dates and check vaccine expiry status.
 ## Main interaction
